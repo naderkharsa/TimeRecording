@@ -43,7 +43,10 @@
 									<!-- Zeile 1: Projektname -->
 									<HBox alignItems="Center" justifyContent="SpaceBetween">
 										<Text text="Projekt: {project}" class="entryProjectTitle" />
-										<Button icon="sap-icon://delete" type="Transparent" press=".onDeleteEntry" />
+										<HBox justifyContent="End" alignItems="Center">
+   										 <Button icon="sap-icon://edit" press=".onEditEntry"/>
+   										 <Button icon="sap-icon://delete" press=".onDeleteEntry"/>
+										</HBox>
 									</HBox>
 									<!-- Zeile 2: Beschreibung -->
 									<Text text="{shortText}" class="entryDescription" wrapping="true" />
@@ -55,7 +58,7 @@
 										</HBox>
 										<Text text="{accounting}" class="entryAccounting" />
 										<Text text="{date}" class="entryDate" />
-									</HBox>
+										</HBox>
 								</VBox>
 							</CustomListItem>
 						</List>

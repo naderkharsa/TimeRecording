@@ -10,7 +10,8 @@
 
       <Label text="Accounting Indicator:" />
       <Select
-  selectedKey="{/popupStop/accounting}">
+  selectedKey="{/popupStop/accounting}"
+  forceSelection="false">
   <core:Item key="01 - Intern" text="01 - Intern" />
   <core:Item key="02 - Remote" text="02 - Remote" />
 </Select>

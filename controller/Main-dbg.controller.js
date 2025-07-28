@@ -95,41 +95,63 @@ sap.ui.define([
         this.onPopupInputChange();
       }
     },
-    
     onPopupAdd: function () {
       const oModel = this.getView().getModel();
       const oData = oModel.getProperty("/popupData");
+      const aEntries = oModel.getProperty("/entries");
     
-      const oStartDate = Fragment.byId("timeInfoFragment", "startPicker").getDateValue();
-      const oEndDate = Fragment.byId("timeInfoFragment", "endPicker").getDateValue();
-    
-      if (!oStartDate || !oEndDate || !oData.shortText || !oData.projectId || !oData.accounting) {
-        MessageToast.show("Bitte alle Felder ausfüllen.");
+      // Validation...
+      if (!oData.start || !oData.end || !oData.projectId || !oData.shortText || !oData.accounting) {
+        MessageToast.show("Please fill in all required fields.");
         return;
       }
     
-      const { start, end, durationFormatted } = this.calculateDuration(oStartDate, oEndDate);
-    
-      const oSelect = Fragment.byId("timeInfoFragment", "projectSelectPopup");
-      const sProjectName = oSelect?.getSelectedItem()?.getText() || oData.projectId;
-    
-      const aEntries = oModel.getProperty("/entries") || [];
-      aEntries.unshift({
-        project: sProjectName,
-        projectId: oData.projectId,
-        start,
-        end,
-        accounting: oData.accounting,
+      const diffMs = oData.end - oData.start;
+      const durationInMinutes = Math.round(diffMs / (1000 * 60));
+      const hours = Math.floor(durationInMinutes / 60);
+      const minutes = durationInMinutes % 60;
+      const durationFormatted = (hours > 0 ? hours + "h " : "") + minutes + "m";
+      const oNewEntry = {
+        start: oData.start.toISOString(),
+        end: oData.end.toISOString(),
         shortText: oData.shortText,
-        duration: durationFormatted
-      });
+        accounting: oData.accounting,
+        project: oData.project,
+        projectId: oData.projectId,
+        duration: durationFormatted,
+        date: oData.start.toLocaleDateString("de-DE")  // Add this line
+      };
+    
+      const bEditMode = oModel.getProperty("/editMode");
+      const iEditIndex = oModel.getProperty("/editIndex");
+    
+      if (bEditMode) {
+        // Replace existing entry
+        aEntries[iEditIndex] = oNewEntry;
+        oModel.setProperty("/editMode", false);
+        oModel.setProperty("/editIndex", null);
+      } else {
+        // Add new
+        aEntries.push(oNewEntry);
+      }
     
       oModel.setProperty("/entries", aEntries);
+    
+      // Close and clear
       this._oTimeDialog.close();
+      oModel.setProperty("/popupData", {}); // optional: reset form
     },    
     
     onStartTimer: function () {
+     
       const oModel = this.getView().getModel();
+      const sProjectId = oModel.getProperty("/entry/projectId");
+    
+      if (!sProjectId) {
+        MessageToast.show("Wähle ein Projekt aus!");
+        return;
+      }
+
       if (!oModel.getProperty("/start")) {
         this._startTime = new Date();
         this._timerInterval = setInterval(() => {
@@ -183,7 +205,8 @@ sap.ui.define([
         end,
         accounting: popupData.accounting,
         shortText: popupData.shortText,
-        duration: durationFormatted
+        duration: durationFormatted,
+        date: start.toLocaleDateString("de-DE") // Add this line
       });
     
       oModel.setProperty("/entries", aEntries);
@@ -241,6 +264,40 @@ sap.ui.define([
     
       oModel.setProperty("/entries", aEntries);
     },
+
+    onEditEntry: async function (oEvent) {
+      const oModel = this.getView().getModel();
+      const oItem = oEvent.getSource().getParent().getParent(); 
+      const sPath = oItem.getBindingContext().getPath(); 
+      const iIndex = parseInt(sPath.split("/").pop(), 10);
+      const oEntry = oModel.getProperty(sPath);
+    
+      // Set popupData with the selected entry's data
+      oModel.setProperty("/popupData", {
+        start: new Date(oEntry.start),
+        end: new Date(oEntry.end),
+        shortText: oEntry.shortText,
+        accounting: oEntry.accounting,
+        project: oEntry.project,
+        projectId: oEntry.projectId
+      });
+    
+      // Set edit mode flag and index
+      oModel.setProperty("/editMode", true);
+      oModel.setProperty("/editIndex", iIndex);
+    
+      // Open the same fragment used for adding
+      if (!this._oTimeDialog) {
+        this._oTimeDialog = await Fragment.load({
+          id: "timeInfoFragment",
+          name: "sap.ui.timebookings.view.fragment.TimeInfoDialog",
+          controller: this
+        });
+        this.getView().addDependent(this._oTimeDialog);
+      }
+    
+      this._oTimeDialog.open();
+    },    
         
     // Dialogaktionen abbrechen
     onPopupCancel: function () {
