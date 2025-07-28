@@ -1,0 +1,75 @@
+<mvc:View controllerName="sap.ui.timebookings.controller.Main"
+	xmlns:mvc="sap.ui.core.mvc"
+	xmlns:core="sap.ui.core"
+	xmlns="sap.m"
+	xmlns:f="sap.f" displayBlock="true">
+	<App>
+		<Page>
+			<customHeader>
+				<f:ShellBar title="Zeiterfassung" class="myBigShellTitle" />
+			</customHeader>
+			<content>
+				<f:DynamicPage>
+					<f:header>
+						<f:DynamicPageHeader pinnable="false">
+							<!-- project DropDown -->
+							<HBox justifyContent="Start" alignItems="Center" class="sapUiSmallMargin">
+								<Select  id="projectSelectMain" forceSelection="false" width="20rem" class="projectDropdown" change=".onProjectChange" items="{ path: 'projectsModel>/projects' }">
+									<core:Item key="{projectsModel>projectID}" text="{projectsModel>project}" />
+								</Select>
+
+								<!-- Start Button -->
+								<Button text="{= ${/start} ? 'Stop' : 'Start' }" icon="{= ${/start} ? 'sap-icon://media-pause' : 'sap-icon://media-play' }" type="{path: '/start', formatter: '.formatButtonType'}" press=".onStartTimer"/>
+								<!-- Plus Button -->
+								<Button icon="sap-icon://add" type="Default" class="plusBtn sapUiTinyMarginBegin" press=".onOpenTimePopup" />
+								<HBox id="timerDisplay" alignItems="Center" class="sapUiTinyMarginBegin">
+									<Text text="{parts: [{path: '/timer'}], formatter: '.formatHours'}" class="timerFace" />
+									<Text text=":" />
+									<Text text="{parts: [{path: '/timer'}], formatter: '.formatMinutes'}" class="timerFace" />
+									<Text text=":" />
+									<Text text="{parts: [{path: '/timer'}], formatter: '.formatSeconds'}" class="timerFace" />
+								</HBox>
+							</HBox>
+						</f:DynamicPageHeader>
+					</f:header>
+					<f:content>
+						<List id="entryList" items="{
+      path: '/entries',
+      sorter: { path: 'date'},
+      groupHeaderFactory: '.getGroupHeader'
+    }" headerText="Erfasste Zeiten" growing="true" growingScrollToLoad="true">
+							<CustomListItem>
+								<VBox class="entryBox">
+									<!-- Zeile 1: Projektname -->
+									<HBox alignItems="Center" justifyContent="SpaceBetween">
+										<Text text="Projekt: {project}" class="entryProjectTitle" />
+										<Button icon="sap-icon://delete" type="Transparent" press=".onDeleteEntry" />
+									</HBox>
+									<!-- Zeile 2: Beschreibung -->
+									<Text text="{shortText}" class="entryDescription" wrapping="true" />
+									<Text text="" />
+									<!-- Zeile 3: Dauer, Abrechnungsart, Datum -->
+									<HBox justifyContent="SpaceBetween" alignItems="Center">
+										<HBox alignItems="Center" justifyContent="SpaceBetween">
+											<Text text="{duration}" class="entryDuration sapUiTinyMarginBegin" />
+										</HBox>
+										<Text text="{accounting}" class="entryAccounting" />
+										<Text text="{date}" class="entryDate" />
+									</HBox>
+								</VBox>
+							</CustomListItem>
+						</List>
+					</f:content>
+				</f:DynamicPage>
+			</content>
+			<footer>
+				<OverflowToolbar>
+					<ToolbarSpacer />
+					<Button text="Zurücksetzen" icon="sap-icon://undo" type="Reject" press=".onCancel" />
+					<Button text="Speichern" icon="sap-icon://save" type="Emphasized" press=".onSave" />
+				</OverflowToolbar>
+			</footer>
+
+		</Page>
+	</App>
+</mvc:View>

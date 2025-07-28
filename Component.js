@@ -1,0 +1,2 @@
+sap.ui.define(["sap/ui/core/UIComponent","sap/ui/core/ComponentSupport"],e=>{"use strict";return e.extend("sap.ui.timebookings.Component",{metadata:{manifest:"json",interfaces:["sap.ui.core.IAsyncContentCreation"]}})});
+//# sourceMappingURL=Component.js.map
