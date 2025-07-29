@@ -1,0 +1,52 @@
+{
+    "_version": "1.1.0",
+    "sap.app": {
+        "id": "sap.ui.timebookings",
+        "type": "application",
+        "title": "Time Recording App"
+    },
+    "sap.ui": {
+        "_version": "1.1.0",
+        "technology": "UI5",
+        "deviceTypes": {
+                "desktop": true,
+                "tablet": true,
+                "phone": true
+        }
+},
+    "sap.ui5": {
+        "dependencies": {
+            "minUI5Version": "1.121.0",
+            "libs": {
+                "sap.ui.core": {},
+                "sap.m": {},
+                "sap.f": {}
+            }
+        },
+        "rootView": {
+            "viewName": "sap.ui.timebookings.view.Main",
+            "type": "XML",
+            "id": "app"
+        },
+        "models": {
+            "i18n": {
+                "type": "sap.ui.model.resource.ResourceModel",
+                "settings": {
+                    "bundleName": "sap.ui.timebookings.i18n.i18n",
+                    "async": true
+                }
+            },
+            "": {
+                "type": "sap.ui.model.json.JSONModel",
+                "uri" : "model/entries.json"
+            }
+        },
+        "resources": {
+            "css": [
+                {
+                    "uri": "css/styles.css"
+                }
+            ]
+        }
+    }
+}
