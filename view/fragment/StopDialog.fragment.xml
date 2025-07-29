@@ -1,26 +1,25 @@
-<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
-  <Dialog id="StopDialog" title="Arbeitsbeschreibung" >
+<core:FragmentDefinition xmlns="sap.m"
+  xmlns:core="sap.ui.core">
+  <Dialog id="StopDialog" title="Arbeitsbeschreibung">
     <VBox class="sapUiSmallMargin">
       <Text text="Beschreibe deine Arbeit" />
-<Input
-  id="shortTextInput"
-  value="{/popupStop/shortText}"
-  placeholder="Short Text"
-  change=".onDescriptionChange" />
+      <Input id="shortTextInput" value="{/entry/shortText}" placeholder="Short Text" liveChange=".onDescriptionChange" class="sapUiTinyMarginBottom" />
 
       <Label text="Accounting Indicator:" />
-      <Select
-  selectedKey="{/popupStop/accounting}"
-  forceSelection="false">
-  <core:Item key="01 - Intern" text="01 - Intern" />
-  <core:Item key="02 - Remote" text="02 - Remote" />
-</Select>
+      <Select id="accountingSelect" selectedKey="{/entry/accountingId}" forceSelection="false" change=".onPopupInputChange">
+        <core:Item key="01" text="01 - Vor Ort" />
+        <core:Item key="02" text="02 - Remote" />
+      </Select>
+
+
     </VBox>
+
     <beginButton>
       <Button id="okBtn" text="OK" press=".onStopConfirm" enabled="false" />
     </beginButton>
-<endButton>
-  <Button text="Abbrechen" press=".onStopCancel" />
-</endButton>
+
+    <endButton>
+      <Button text="Abbrechen" press=".onStopCancel" />
+    </endButton>
   </Dialog>
 </core:FragmentDefinition>

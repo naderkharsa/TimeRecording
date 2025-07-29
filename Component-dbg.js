@@ -2,8 +2,7 @@ sap.ui.define(["sap/ui/core/UIComponent", "sap/ui/core/ComponentSupport"], (UICo
 	"use strict";
 	return UIComponent.extend("sap.ui.timebookings.Component", {
 		metadata: {
-			manifest: "json",
-			interfaces: ["sap.ui.core.IAsyncContentCreation"],
+			manifest: "json"
 		}
 	});
 });

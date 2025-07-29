@@ -1,7 +1,9 @@
+
 {
   "entries": [
     {
       "project": "Deutsche Bahn",
+      "projectId": "",
       "start": "2025-07-15T09:00:00",
       "end": "2025-07-15T10:00:00",
       "accounting": "99 - Keine Abrechnung",
@@ -10,6 +12,7 @@
     },
     {
       "project": "BMW Projekt",
+      "projectId": "",
       "start": "2025-07-15T09:00:00",
       "end": "2025-07-15T10:15:00",
       "accounting": "99 - Keine Abrechnung",

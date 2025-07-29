@@ -1,19 +1,12 @@
 <core:FragmentDefinition xmlns="sap.m"
 	xmlns:core="sap.ui.core"
-	xmlns:l="sap.ui.layout" 
-	controllerName="sap.ui.timebookings.controller.Main">
+	xmlns:l="sap.ui.layout">
 
 	<Dialog id="TimeInfoDialog" title="Details zur Zeitaufzeichnung" draggable="true" resizable="true" contentWidth="25rem">
 		<VBox class="sapUiSmallMargin">
-			
+
 			<Label text="Projekt" />
-			<Select id="projectSelectPopup"
-			        selectedKey="{/popupData/projectId}"
-			        width="20rem"
-					forceSelection="false"
-			        class="projectDropdown"
-			        change=".onPopupInputChange"
-			        items="{ path: 'projectsModel>/projects' }">
+			<Select id="projectSelectPopup" selectedKey="{/entry/projectId}" width="20rem" forceSelection="false" class="projectDropdown" change=".onPopupInputChange" items="{ path: 'projectsModel>/projects' }">
 				<items>
 					<core:Item key="{projectsModel>projectID}" text="{projectsModel>project}" />
 				</items>
@@ -22,46 +15,32 @@
 			<HBox class="sapUiSmallMarginTop">
 				<VBox class="sapUiTinyMarginEnd">
 					<Label text="Startzeit" />
-					<DateTimePicker id="startPicker"
-					                value="{
-    								path: '/popupData/start',
+					<DateTimePicker id="startPicker" value="{
+    								path: '/entry/start',
     								type: 'sap.ui.model.type.DateTime',
     								formatOptions: { pattern: 'yyyy-MM-dd HH:mm' }
-					                }"
-					                change=".onPopupInputChange"
-					                class="sapUiSmallMarginBottom" />
+					                }" change=".onPopupInputChange" class="sapUiSmallMarginBottom" />
 				</VBox>
 
 				<VBox class="sapUiTinyMarginBegin">
 					<Label text="Endzeit" />
-					<DateTimePicker id="endPicker"
-					                value="{
-    								path: '/popupData/end',
+					<DateTimePicker id="endPicker" value="{
+    								path: '/entry/end',
     								type: 'sap.ui.model.type.DateTime',
     								formatOptions: { pattern: 'yyyy-MM-dd HH:mm' }
-					                }"
-					                change=".onPopupInputChange"
-					                class="sapUiSmallMarginBottom" />
+					                }" change=".onPopupInputChange" class="sapUiSmallMarginBottom" />
 				</VBox>
 			</HBox>
 
 			<Label text="Accounting Indicator" class="sapUiSmallMarginTop" />
-			<Select id="accountingSelectPopup"
-					forceSelection="false"
-			        selectedKey="{/popupData/accounting}"
-			        change=".onPopupInputChange">
-				<items>
-
-					<core:Item key="01" text="01 - Vor Ort" />
-					<core:Item key="02" text="02 - Remote" />
-				</items>
+			<Select id="accountingSelectPopup" selectedKey="{/entry/accountingId}" forceSelection="false" change=".onPopupInputChange">
+				<core:Item key="01" text="01 - Vor Ort" />
+				<core:Item key="02" text="02 - Remote" />
 			</Select>
 
 			<Label text="Short Text" class="sapUiSmallMarginTop" />
-			<Input id="shortTextInput2"
-			       value="{/popupData/shortText}"
-			       change=".onPopupInputChange" />
-				   
+			<Input id="shortTextInput2" value="{/entry/shortText}" liveChange=".onPopupInputChange" />
+
 			<HBox alignItems="Center" justifyContent="SpaceBetween" class="sapUiSmallMarginTop">
 				<Button text="Cancel" type="Reject" press=".onPopupCancel" />
 				<Button id="addBtn" text="Add" type="Accept" press=".onPopupAdd" class="sapUiTinyMarginBegin" enabled="false" />
