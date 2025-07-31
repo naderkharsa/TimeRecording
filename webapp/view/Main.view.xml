@@ -22,7 +22,6 @@
 									forceSelection="false"
 									width="20rem"
 									class="projectDropdown"
-									change=".onProjectChange"
 									selectedKey="{/entry/projectId}"
 									items="{ path: 'projectsModel>/projects' }">
 									<core:Item key="{projectsModel>projectID}" text="{projectsModel>project}" />

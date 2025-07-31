@@ -20,7 +20,9 @@ sap.ui.define([
         },
         entries: [],
         timer: 0,
-        start: false
+        start: false,
+        editMode: false, 
+        editIndex: null  
       };
       const oModel = new JSONModel(oInitialData);
       oModel.setDefaultBindingMode(sap.ui.model.BindingMode.TwoWay);
@@ -79,7 +81,7 @@ sap.ui.define([
       }
       oModel.refresh(true); // Always refresh before open
       this._oTimeDialog.open();
-      this.onPopupInputChange();
+      this.onDialogInputChange();
     },
 
     // ---- Adding or editing an entry (fragment "+" button) ----
@@ -257,6 +259,48 @@ sap.ui.define([
       oModel.setProperty("/entries", aEntries);
     },
 
+    onDialogInputChange: function (oEvent) {
+      const oModel = this.getView().getModel();
+      const oEntry = oModel.getProperty("/entry");
+      const oSource = oEvent.getSource();
+      const sId = oSource.getId ? oSource.getId() : "";
+    
+      // --- Write to model on text/selection changes ---
+      if (sId.includes("shortTextInput")) {
+        oModel.setProperty("/entry/shortText", oSource.getValue());
+      }
+      if (sId.includes("accountingSelect")) {
+        oModel.setProperty("/entry/accountingId", oSource.getSelectedKey());
+        oModel.setProperty("/entry/accountingText", oSource.getSelectedItem()?.getText());
+      }
+      if (sId.includes("projectSelect")) {
+        oModel.setProperty("/entry/projectId", oSource.getSelectedKey());
+        oModel.setProperty("/entry/project", oSource.getSelectedItem()?.getText());
+      }
+    
+      // --- Validation rules ---
+      const isShortTextValid = typeof oEntry.shortText === "string" && oEntry.shortText.trim().length >= 5;
+      const isAccountingValid = typeof oEntry.accountingId === "string" && oEntry.accountingId.trim().length > 0;
+      const isProjectValid = typeof oEntry.projectId === "string" && oEntry.projectId.trim().length > 0;
+    
+      // --- Which dialog are we in? ---
+      // StopDialog has OK button, TimeInfoDialog has Add button
+      const oOkBtn = sap.ui.core.Fragment.byId(this.getView().getId(), "okBtn");
+      const oAddBtn = sap.ui.core.Fragment.byId("timeInfoFragment", "addBtn");
+    
+      // Enable OK button in StopDialog only if short text & accounting valid
+      if (oOkBtn) {
+        oOkBtn.setEnabled(isShortTextValid && isAccountingValid);
+      }
+      // Enable Add button in TimeInfoDialog only if all are valid
+      if (oAddBtn) {
+        // Also check for valid start/end dates
+        const isStartValid = oEntry.start instanceof Date && !isNaN(oEntry.start);
+        const isEndValid = oEntry.end instanceof Date && !isNaN(oEntry.end);
+        oAddBtn.setEnabled(isShortTextValid && isAccountingValid && isProjectValid && isStartValid && isEndValid);
+      }
+    },    
+
     onPopupCancel: function () {
       this._oTimeDialog.close();
     },
@@ -265,53 +309,7 @@ sap.ui.define([
       this._pStopDialog.close();
     },
 
-    // ---- Select controls update model values immediately ----
-    onPopupInputChange: function (oEvent) {
-      const oModel = this.getView().getModel();
-      const data = oModel.getProperty("/entry");
-      const oSource = oEvent?.getSource?.();
-      const sId = oSource?.getId?.() || "";
 
-      if (sId.includes("shortTextInput")) {
-        oModel.setProperty("/entry/shortText", oSource.getValue());
-      }
-      if (sId.includes("projectSelect")) {
-        const sKey = oSource.getSelectedKey();
-        const sText = oSource.getSelectedItem()?.getText();
-        oModel.setProperty("/entry/projectId", sKey);
-        oModel.setProperty("/entry/project", sText);
-      }
-      if (sId.includes("accountingSelect")) {
-        const sKey = oSource.getSelectedKey();
-        const sText = oSource.getSelectedItem()?.getText();
-        oModel.setProperty("/entry/accountingId", sKey);
-        oModel.setProperty("/entry/accountingText", sText);
-      }
-
-      // Validate
-      const isStartValid = data.start instanceof Date && !isNaN(data.start);
-      const isEndValid = data.end instanceof Date && !isNaN(data.end);
-      const hasShortText = typeof data.shortText === "string" && data.shortText.trim().length > 0;
-      const hasProjectId = typeof data.projectId === "string" && data.projectId.trim().length > 0;
-      const hasAccounting = typeof data.accountingId === "string" && data.accountingId.trim().length > 0;
-      const isValid = isStartValid && isEndValid && hasShortText && hasProjectId && hasAccounting;
-      const addBtn = sap.ui.core.Fragment.byId("timeInfoFragment", "addBtn");
-      if (addBtn) {
-        addBtn.setEnabled(isValid);
-      }
-      this._validateStopDialog?.();
-    },
-
-    _validateStopDialog: function () {
-      const oModel = this.getView().getModel();
-      const oData = oModel.getProperty("/entry");
-      const okBtn = sap.ui.core.Fragment.byId(this.getView().getId(), "okBtn");
-      const hasShortText = oData.shortText && oData.shortText.trim().length > 0;
-      const hasAccounting = oData.accountingId && oData.accountingId.trim().length > 0;
-      if (okBtn) {
-        okBtn.setEnabled(!!(hasShortText && hasAccounting));
-      }
-    },
 
     // Utility formatters
     formatHours: function (t) {
@@ -354,7 +352,6 @@ sap.ui.define([
      }
 
      */
-
   });
  
 });
