@@ -7,48 +7,34 @@ sap.ui.define([
   "use strict";
 
   return Controller.extend("sap.ui.timebookings.controller.Main", {
+
     onInit: function () {
-      const oInitialData = {
-        entry: {
-          start: null,
-          end: null,
-          shortText: "",
-          accountingId: "",
-          accountingText: "",
-          projectId: "",
-          project: ""
-        },
-        entries: [],
+      const oInitial = {
+        entry: { start: null, end: null, shortText: "", accountingId: "", accountingText: "", projectId: "", project: "" },
         timer: 0,
-        start: false
+        start: false,
+        editMode: false,
+        editContextPath: null
       };
-      const oModel = new JSONModel(oInitialData);
-      oModel.setDefaultBindingMode(sap.ui.model.BindingMode.TwoWay);
-      this.getView().setModel(oModel);
-
-      // Load Projects
-      const sProjectsPath = sap.ui.require.toUrl("sap/ui/timebookings/model/projects.json");
-      const oProjectModel = new JSONModel();
-      oProjectModel.loadData(sProjectsPath, null, false);
-      this.getView().setModel(oProjectModel, "projectsModel");
-
-      // Load Entries
-      const sEntriesPath = sap.ui.require.toUrl("sap/ui/timebookings/model/entries.json");
-      const oJSONLoader = new JSONModel();
-      oJSONLoader.loadData(sEntriesPath, null, true);
-      oJSONLoader.attachRequestCompleted(() => {
-        const loadedEntries = oJSONLoader.getData();
-        if (loadedEntries && Array.isArray(loadedEntries.entries)) {
-          oModel.setProperty("/entries", loadedEntries.entries);
-        }
-      });
+      const oVM = new JSONModel(oInitial);
+      oVM.setDefaultBindingMode(sap.ui.model.BindingMode.TwoWay);
+      this.getView().setModel(oVM); // view-state model
     },
 
-    // ---- Always copy main view selection before opening the popup ----
-    onOpenTimePopup: async function () {
-      const oModel = this.getView().getModel();
+    _getODataModel: function () {
+      return this.getView().getModel("odataModel") || this.getView().getModel();
+    },
 
-      // Get current project/accounting selection from main view
+    _getEntriesBinding: function () {
+      const oList = this.byId("entryList"); // ← use the real ID from XML
+      return oList.getBinding("items");
+    },
+
+
+    onOpenTimePopup: async function () {
+      const oVM = this.getView().getModel();
+
+      // Read current project from main Select
       let sProjectId = "";
       let sProjectName = "";
       const oSelect = this.byId("projectSelectMain");
@@ -57,12 +43,12 @@ sap.ui.define([
         sProjectName = oSelect.getSelectedItem()?.getText() || "";
       }
 
-      // Pre-fill /entry with main view selection
-      oModel.setProperty("/entry", {
+      // Pre-fill dialog buffer
+      oVM.setProperty("/entry", {
         start: new Date(),
         end: new Date(Date.now() + 30 * 60 * 1000),
         shortText: "",
-        accountingId: "",      
+        accountingId: "",
         accountingText: "",
         projectId: sProjectId,
         project: sProjectName
@@ -74,31 +60,33 @@ sap.ui.define([
           name: "sap.ui.timebookings.view.fragment.TimeInfoDialog",
           controller: this
         });
-        this._oTimeDialog.setModel(oModel);
+        this._oTimeDialog.setModel(oVM);
         this.getView().addDependent(this._oTimeDialog);
       }
-      oModel.refresh(true); // Always refresh before open
+      oVM.refresh(true);
       this._oTimeDialog.open();
-      this.onPopupInputChange();
+
+      const oAddBtn = sap.ui.core.Fragment.byId("timeInfoFragment", "addBtn");
+      if (oAddBtn) oAddBtn.setEnabled(false);
+
+      // run validation once (no event)
+      this.onDialogInputChange();
     },
 
-    // ---- Adding or editing an entry (fragment "+" button) ----
-    onPopupAdd: function () {
-      const oModel = this.getView().getModel();
-      const oData = oModel.getProperty("/entry");
-      const aEntries = oModel.getProperty("/entries");
-
+    onPopupAdd: async function () {
+      const oVM = this.getView().getModel();
+      const oData = oVM.getProperty("/entry");
 
       const diffMs = oData.end - oData.start;
-      const hours = Math.floor(Math.round(diffMs / (1000 * 60)) / 60);
-      const minutes = Math.round(diffMs / (1000 * 60)) % 60;
-      const durationFormatted = (hours > 0 ? hours + "h " : "") + minutes + "m";
+      const minutes = Math.round(diffMs / (1000 * 60));
+      const hours = Math.floor(minutes / 60);
+      const durationFormatted = (hours > 0 ? hours + "h " : "") + (minutes % 60) + "m";
 
-      const oNewEntry = {
+      const payload = {
         start: oData.start.toISOString(),
         end: oData.end.toISOString(),
         shortText: oData.shortText,
-        accounting: oData.accountingText,
+        accountingText: oData.accountingText,
         accountingId: oData.accountingId,
         project: oData.project,
         projectId: oData.projectId,
@@ -106,48 +94,67 @@ sap.ui.define([
         date: oData.start.toISOString().split("T")[0]
       };
 
-      // Handle edit mode (if editing existing entry)
-      const bEditMode = oModel.getProperty("/editMode");
-      const iEditIndex = oModel.getProperty("/editIndex");
-      if (bEditMode) {
-        aEntries[iEditIndex] = oNewEntry; //writes the edited entry in 
-        oModel.setProperty("/editMode", false);
-        oModel.setProperty("/editIndex", null);
-      } else {
-        aEntries.push(oNewEntry);  //writes the entry in 
+      try {
+        if (oVM.getProperty("/editMode") && this._editCtx) {
+          // PATCH existing
+          Object.keys(payload).forEach(k => this._editCtx.setProperty(k, payload[k]));
+          await this._getODataModel().submitBatch("$auto");
+          MessageToast.show("Eintrag aktualisiert");
+          this._editCtx = null;
+          oVM.setProperty("/editMode", false);
+        } else {
+          // CREATE new — insert at top so it’s visible immediately
+          const oListBinding = this._getEntriesBinding();
+          const oNewCtx = oListBinding.create(payload, /* bAtEnd */ false);
+          await oNewCtx.created();
+          MessageToast.show(this.getView().getModel("i18n").getResourceBundle().getText("msgTimeSaved"));
+        }
+
+        // Re-evaluate grouping/sorting so the item appears right away
+        const oList = this.byId("entryList");
+        if (oList) {
+          oList.getBinding("items").refresh();
+          // If you need strict order, re-apply sorter:
+          // oList.getBinding("items").sort(new sap.ui.model.Sorter("date", false));
+        }
+      } catch (e) {
+        MessageToast.show("Fehler beim Speichern: " + (e.message || e));
       }
-      //aEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
-      oModel.setProperty("/entries", aEntries);
 
       this._oTimeDialog.close();
-      oModel.setProperty("/entry", {
-        start: null, end: null, shortText: "",
-        accountingId: "", accountingText: "",
-        projectId: "", project: ""
-      });
+      oVM.setProperty("/entry", { start: null, end: null, shortText: "", accountingId: "", accountingText: "", projectId: "", project: "" });
     },
 
-    // ---- Start/Stop Timer logic ----
+
     onStartTimer: function () {
-      const oModel = this.getView().getModel();
-      const sProjectId = oModel.getProperty("/entry/projectId");
-      if (!sProjectId) {
-        MessageToast.show("Wähle ein Projekt aus!");
-        return;
-      }
-      if (!oModel.getProperty("/start")) {
+      const oVM = this.getView().getModel();
+      const oSelect = this.byId("projectSelectMain");
+      const sProjectId = oSelect?.getSelectedKey() || "";
+  if (!sProjectId) {
+    const oI18n = this.getOwnerComponent().getModel("i18n");
+    oI18n.getResourceBundle().then((oBundle) => {
+      MessageToast.show(oBundle.getText("msgChooseProject"));
+    });
+    return;
+  }
+      // also mirror into /entry so Stop dialog sees it
+      oVM.setProperty("/entry/projectId", sProjectId);
+      oVM.setProperty("/entry/project", oSelect?.getSelectedItem()?.getText() || "");
+
+      if (!oVM.getProperty("/start")) {
         this._startTime = new Date();
         this._timerInterval = setInterval(() => {
-          oModel.setProperty("/timer", oModel.getProperty("/timer") + 1);
+          oVM.setProperty("/timer", oVM.getProperty("/timer") + 1);
         }, 1000);
-        oModel.setProperty("/start", true);
+        oVM.setProperty("/start", true);
       } else {
         clearInterval(this._timerInterval);
         this._stopTime = new Date();
-        oModel.setProperty("/start", false);
+        oVM.setProperty("/start", false);
         this._openStopDialog();
       }
     },
+
     _openStopDialog: function () {
       if (!this._pStopDialog) {
         Fragment.load({
@@ -158,40 +165,33 @@ sap.ui.define([
           this._pStopDialog = oDialog;
           this.getView().addDependent(oDialog);
           oDialog.open();
-          this._validateStopDialog();
+          // No _validateStopDialog(); validation handled in onDialogInputChange
+          const okBtn = sap.ui.core.Fragment.byId(this.getView().getId(), "okBtn");
+          if (okBtn) okBtn.setEnabled(false);
         });
       } else {
         this._pStopDialog.open();
-        this._validateStopDialog(); 
+        const okBtn = sap.ui.core.Fragment.byId(this.getView().getId(), "okBtn");
+        if (okBtn) okBtn.setEnabled(false);
       }
     },
 
-    // ---- Stop Dialog OK: Always fetch project/accounting selection before saving ----
-    onStopConfirm: function () {
-      const oModel = this.getView().getModel();
-      const oData = oModel.getProperty("/entry");
+    onStopConfirm: async function () {
+      const oVM = this.getView().getModel();
+      const oData = oVM.getProperty("/entry");
 
-      // For Start/Stop, always get current main project/accounting selection
-      let sProjectId = oData.projectId;
-      let sProjectName = oData.project;
+      // Read the latest project selection from the main select
       const oSelect = this.byId("projectSelectMain");
-      if (oSelect) {
-        sProjectId = oSelect.getSelectedKey();
-        // Use the real project name from projectsModel, not just dropdown
-        const oProjectsModel = this.getView().getModel("projectsModel");
-        const aProjects = oProjectsModel.getProperty("/projects") || [];
-        const oProj = aProjects.find(p => p.projectID === sProjectId);
-        sProjectName = oProj ? oProj.project : sProjectId;
-      }
+      const sProjectId = oSelect?.getSelectedKey() || oData.projectId || "";
+      const sProjectName = oSelect?.getSelectedItem()?.getText() || oData.project || sProjectId;
 
-      // Calculate duration
       const { start, end, durationFormatted } = this.calculateDuration(this._startTime, this._stopTime);
 
-      const oNewEntry = {
+      const payload = {
         start: start.toISOString(),
         end: end.toISOString(),
         shortText: oData.shortText,
-        accounting: oData.accountingText,
+        accountingText: oData.accountingText,
         accountingId: oData.accountingId,
         project: sProjectName,
         projectId: sProjectId,
@@ -199,42 +199,51 @@ sap.ui.define([
         date: start.toISOString().split("T")[0]
       };
 
-      const aEntries = oModel.getProperty("/entries") || [];
-      aEntries.unshift(oNewEntry);
-      //aEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
-      oModel.setProperty("/entries", aEntries);
+      try {
+        const oListBinding = this._getEntriesBinding();
+        const oNewCtx = oListBinding.create(payload, /* bAtEnd */ false); // put at top
+        await oNewCtx.created();
 
-      // Reset for next use
-      oModel.setProperty("/entry", {
-        start: null, end: null, shortText: "",
-        accountingId: "", accountingText: "",
-        projectId: "", project: ""
-      });
-      oModel.setProperty("/timer", 0);
-      oModel.setProperty("/start", false);
-      oModel.refresh(true);
+        const oList = this.byId("entryList");
+        if (oList) {
+          oList.getBinding("items").refresh();
+          // oList.getBinding("items").sort(new sap.ui.model.Sorter("date", false));
+        }
+
+        MessageToast.show(this.getView().getModel("i18n").getResourceBundle().getText("msgTimeSaved"));
+
+      } catch (e) {
+        MessageToast.show("Fehler beim Speichern: " + (e.message || e));
+      }
+
+      // Reset UI state
+      oVM.setProperty("/entry", { start: null, end: null, shortText: "", accountingId: "", accountingText: "", projectId: "", project: "" });
+      oVM.setProperty("/timer", 0);
+      oVM.setProperty("/start", false);
+      oVM.refresh(true);
       this._pStopDialog.close();
     },
 
-    onEditEntry: async function (oEvent) {
-      const oModel = this.getView().getModel();
-      const oItem = oEvent.getSource().getParent().getParent();
-      const sPath = oItem.getBindingContext().getPath();
-      const iIndex = parseInt(sPath.split("/").pop(), 10);
-      const oEntry = oModel.getProperty(sPath);
 
-      oModel.setProperty("/entry", {
+    onEditEntry: async function (oEvent) {
+      const oVM = this.getView().getModel();
+      const oCtx = oEvent.getSource().getBindingContext("odataModel");
+      if (!oCtx) return;
+
+      const oEntry = oCtx.getObject();
+      oVM.setProperty("/entry", {
         start: new Date(oEntry.start),
         end: new Date(oEntry.end),
         shortText: oEntry.shortText,
-        accountingText: oEntry.accounting,
+        accountingText: oEntry.accountingText,  // ← fixed
         accountingId: oEntry.accountingId,
         project: oEntry.project,
         projectId: oEntry.projectId
       });
 
-      oModel.setProperty("/editMode", true);
-      oModel.setProperty("/editIndex", iIndex);
+      oVM.setProperty("/editMode", true);
+      this._editCtx = oCtx;                      // ← store context object
+      oVM.setProperty("/editContextPath", null); // optional: clear old path
 
       if (!this._oTimeDialog) {
         this._oTimeDialog = await Fragment.load({
@@ -247,114 +256,76 @@ sap.ui.define([
       this._oTimeDialog.open();
     },
 
-    onDeleteEntry: function (oEvent) {
-      const oModel = this.getView().getModel();
-      const oContext = oEvent.getSource().getBindingContext();
-      const sPath = oContext.getPath();
-      const iIndex = parseInt(sPath.split("/").pop(), 10);
-      const aEntries = [...oModel.getProperty("/entries")];
-      aEntries.splice(iIndex, 1);
-      oModel.setProperty("/entries", aEntries);
-    },
-
-    onPopupCancel: function () {
-      this._oTimeDialog.close();
-    },
-
-    onStopCancel: function () {
-      this._pStopDialog.close();
-    },
-
-    // ---- Select controls update model values immediately ----
-    onPopupInputChange: function (oEvent) {
-      const oModel = this.getView().getModel();
-      const data = oModel.getProperty("/entry");
-      const oSource = oEvent?.getSource?.();
-      const sId = oSource?.getId?.() || "";
-
-      if (sId.includes("shortTextInput")) {
-        oModel.setProperty("/entry/shortText", oSource.getValue());
-      }
-      if (sId.includes("projectSelect")) {
-        const sKey = oSource.getSelectedKey();
-        const sText = oSource.getSelectedItem()?.getText();
-        oModel.setProperty("/entry/projectId", sKey);
-        oModel.setProperty("/entry/project", sText);
-      }
-      if (sId.includes("accountingSelect")) {
-        const sKey = oSource.getSelectedKey();
-        const sText = oSource.getSelectedItem()?.getText();
-        oModel.setProperty("/entry/accountingId", sKey);
-        oModel.setProperty("/entry/accountingText", sText);
-      }
-
-      // Validate
-      const isStartValid = data.start instanceof Date && !isNaN(data.start);
-      const isEndValid = data.end instanceof Date && !isNaN(data.end);
-      const hasShortText = typeof data.shortText === "string" && data.shortText.trim().length > 0;
-      const hasProjectId = typeof data.projectId === "string" && data.projectId.trim().length > 0;
-      const hasAccounting = typeof data.accountingId === "string" && data.accountingId.trim().length > 0;
-      const isValid = isStartValid && isEndValid && hasShortText && hasProjectId && hasAccounting;
-      const addBtn = sap.ui.core.Fragment.byId("timeInfoFragment", "addBtn");
-      if (addBtn) {
-        addBtn.setEnabled(isValid);
-      }
-      this._validateStopDialog?.();
-    },
-
-    _validateStopDialog: function () {
-      const oModel = this.getView().getModel();
-      const oData = oModel.getProperty("/entry");
-      const okBtn = sap.ui.core.Fragment.byId(this.getView().getId(), "okBtn");
-      const hasShortText = oData.shortText && oData.shortText.trim().length > 0;
-      const hasAccounting = oData.accountingId && oData.accountingId.trim().length > 0;
-      if (okBtn) {
-        okBtn.setEnabled(!!(hasShortText && hasAccounting));
+    onDeleteEntry: async function (oEvent) {
+      const oCtx = oEvent.getSource().getBindingContext("odataModel");
+      if (!oCtx) return;
+      try {
+        await oCtx.delete("$auto");
+        MessageToast.show("Eintrag gelöscht");
+      } catch (e) {
+        MessageToast.show("Löschen fehlgeschlagen: " + (e.message || e));
       }
     },
 
-    // Utility formatters
-    formatHours: function (t) {
-      return t !== undefined ? String(Math.floor(t / 3600)).padStart(2, "0") : "00";
+    onDialogInputChange: function (oEvent) {
+      const oVM = this.getView().getModel();
+      const oEntry = oVM.getProperty("/entry");
+
+      // Only write-to-model if event exists (safe to call without event)
+      if (oEvent && oEvent.getSource) {
+        const oSource = oEvent.getSource();
+        const sId = oSource.getId ? oSource.getId() : "";
+
+        if (sId.includes("shortTextInput")) {
+          oVM.setProperty("/entry/shortText", oSource.getValue());
+        }
+        if (sId.includes("accountingSelect")) {
+          oVM.setProperty("/entry/accountingId", oSource.getSelectedKey());
+          oVM.setProperty("/entry/accountingText", oSource.getSelectedItem()?.getText());
+        }
+        if (sId.includes("projectSelect")) {
+          oVM.setProperty("/entry/projectId", oSource.getSelectedKey());
+          oVM.setProperty("/entry/project", oSource.getSelectedItem()?.getText());
+        }
+      }
+
+      const isShortTextValid = typeof oEntry.shortText === "string" && oEntry.shortText.trim().length >= 5;
+      const isAccountingValid = typeof oEntry.accountingId === "string" && oEntry.accountingId.trim().length > 0;
+      const isProjectValid = typeof oEntry.projectId === "string" && oEntry.projectId.trim().length > 0;
+
+      const oOkBtn = sap.ui.core.Fragment.byId(this.getView().getId(), "okBtn");
+      const oAddBtn = sap.ui.core.Fragment.byId("timeInfoFragment", "addBtn");
+
+      if (oOkBtn) oOkBtn.setEnabled(isShortTextValid && isAccountingValid);
+
+      if (oAddBtn) {
+        const isStartValid = oEntry.start instanceof Date && !isNaN(oEntry.start);
+        const isEndValid = oEntry.end instanceof Date && !isNaN(oEntry.end);
+        oAddBtn.setEnabled(isShortTextValid && isAccountingValid && isProjectValid && isStartValid && isEndValid);
+      }
     },
-    formatMinutes: function (t) {
-      return t !== undefined ? String(Math.floor((t % 3600) / 60)).padStart(2, "0") : "00";
-    },
-    formatSeconds: function (t) {
-      return t !== undefined ? String(t % 60).padStart(2, "0") : "00";
-    },
-    formatButtonType: function (bStarted) {
-      return bStarted ? "Negative" : "Default";
-    },
+
+    onPopupCancel: function () { this._oTimeDialog.close(); },
+    onStopCancel: function () { this._pStopDialog.close(); },
+
+    // Util
+    formatHours: t => t !== undefined ? String(Math.floor(t / 3600)).padStart(2, "0") : "00",
+    formatMinutes: t => t !== undefined ? String(Math.floor((t % 3600) / 60)).padStart(2, "0") : "00",
+    formatSeconds: t => t !== undefined ? String(t % 60).padStart(2, "0") : "00",
+    formatButtonType: bStarted => bStarted ? "Negative" : "Default",
+
     calculateDuration: function (startDate, endDate) {
       const diffMs = endDate - startDate;
       const durationInMinutes = Math.round(diffMs / (1000 * 60));
       const hours = Math.floor(durationInMinutes / 60);
       const minutes = durationInMinutes % 60;
       const durationFormatted = (hours > 0 ? hours + "h " : "") + minutes + "m";
-      return { start: startDate, end: endDate, durationFormatted: durationFormatted };
+      return { start: startDate, end: endDate, durationFormatted };
     },
 
     getGroupHeader: function (oGroup) {
-      return new sap.m.GroupHeaderListItem({
-        title: "Datum: " + oGroup.key,
-        upperCase: false
-      });
-    },
-    
-    /*
-    onSearch: function (oEvent) {
-    },
-
-    onSave: function () { 
-      Implement server logic here 
-     },
-    onCancel: function () { 
-      Implement clear/reset logic here if needed 
-     }
-
-     */
+      return new sap.m.GroupHeaderListItem({ title: "Datum: " + oGroup.key, upperCase: false });
+    }
 
   });
- 
 });

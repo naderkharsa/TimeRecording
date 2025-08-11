@@ -1,101 +1,100 @@
 <mvc:View controllerName="sap.ui.timebookings.controller.Main"
-	xmlns:mvc="sap.ui.core.mvc"
-	xmlns:core="sap.ui.core"
-	xmlns="sap.m"
-	xmlns:f="sap.f"
-	displayBlock="true">
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns:core="sap.ui.core"
+    xmlns="sap.m"
+    xmlns:f="sap.f"
+    displayBlock="true">
 
-	<App>
-		<Page>
-			<customHeader>
-				<f:ShellBar title="Zeiterfassung" class="myBigShellTitle" />
-			</customHeader>
+    <App>
+        <Page>
+            <customHeader>
+                <f:ShellBar title="{i18n>appTitle}" class="myBigShellTitle" />
+            </customHeader>
 
-			<content>
-				<f:DynamicPage>
-					<f:header>
-						<f:DynamicPageHeader pinnable="false">
-							<HBox justifyContent="Start" alignItems="Center" class="sapUiSmallMargin">
-								<!-- Project Dropdown -->
-								<Select
-									id="projectSelectMain"
-									forceSelection="false"
-									width="20rem"
-									class="projectDropdown"
-									change=".onProjectChange"
-									selectedKey="{/entry/projectId}"
-									items="{ path: 'projectsModel>/projects' }">
-									<core:Item key="{projectsModel>projectID}" text="{projectsModel>project}" />
-								</Select>
+            <content>
+                <f:DynamicPage>
+                    <f:header>
+                        <f:DynamicPageHeader pinnable="false">
+                            <HBox justifyContent="Start" alignItems="Center" class="sapUiSmallMargin">
 
-								<!-- Start/Stop Button -->
-								<Button
-									text="{= ${/start} ? 'Stop' : 'Start' }"
-									icon="{= ${/start} ? 'sap-icon://media-pause' : 'sap-icon://media-play' }"
-									type="{ path: '/start', formatter: '.formatButtonType' }"
-									press=".onStartTimer" />
+                                <!-- Project Dropdown -->
+                                <Select
+                                    id="projectSelectMain"
+                                    forceSelection="false"
+                                    width="20rem"
+                                    class="projectDropdown"
+                                    selectedKey="{/entry/projectId}"
+                                    items="{ path: 'odataModel>/Projects' }">
+                                    <core:Item key="{odataModel>projectID}" text="{odataModel>project}"/>
+                                </Select>
 
-								<!-- Add New Entry Button -->
-								<Button icon="sap-icon://add" type="Default" class="plusBtn sapUiTinyMarginBegin" press=".onOpenTimePopup" />
+                                <!-- Start/Stop Button -->
+                                <Button
+                                    text="{= ${/start} ? ${i18n>btnStop} : ${i18n>btnStart} }"
+                                    icon="{= ${/start} ? 'sap-icon://media-pause' : 'sap-icon://media-play' }"
+                                    type="{ path: '/start', formatter: '.formatButtonType' }"
+                                    press=".onStartTimer" />
 
-								<!-- Timer Display -->
-								<HBox id="timerDisplay" alignItems="Center" class="sapUiTinyMarginBegin">
-									<Text text="{parts: [{ path: '/timer' }], formatter: '.formatHours'}" class="timerFace" />
-									<Text text=":" />
-									<Text text="{parts: [{ path: '/timer' }], formatter: '.formatMinutes'}" class="timerFace" />
-									<Text text=":" />
-									<Text text="{parts: [{ path: '/timer' }], formatter: '.formatSeconds'}" class="timerFace" />
-								</HBox>
-							</HBox>
-						</f:DynamicPageHeader>
-					</f:header>
+                                <!-- Add New Entry Button -->
+                                <Button icon="sap-icon://add"
+                                        type="Default"
+                                        class="plusBtn sapUiTinyMarginBegin"
+                                        press=".onOpenTimePopup"
+                                        tooltip="{i18n>tipAdd}" />
 
-					<f:content>
-						<List
-							id="entryList"
-							items="{
-								path: '/entries',
-								sorter: { path: 'date', descending: false },
-								groupHeaderFactory: '.getGroupHeader'
-							}"
-							headerText="Erfasste Zeiten"
-							growing="true"
-							growingScrollToLoad="true">
+                                <!-- Timer Display -->
+                                <HBox id="timerDisplay" alignItems="Center" class="sapUiTinyMarginBegin">
+                                    <Text text="{parts: [{ path: '/timer' }], formatter: '.formatHours'}" class="timerFace" />
+                                    <Text text=":" />
+                                    <Text text="{parts: [{ path: '/timer' }], formatter: '.formatMinutes'}" class="timerFace" />
+                                    <Text text=":" />
+                                    <Text text="{parts: [{ path: '/timer' }], formatter: '.formatSeconds'}" class="timerFace" />
+                                </HBox>
+                            </HBox>
+                        </f:DynamicPageHeader>
+                    </f:header>
 
-							<CustomListItem>
-								<VBox class="entryBox">
-									<!-- Zeile 1: Projektname + Edit/Delete -->
-									<HBox alignItems="Center" justifyContent="SpaceBetween">
-										<Text text="Projekt: {project}" class="entryProjectTitle" />
-										<HBox justifyContent="End" alignItems="Center">
-											<Button icon="sap-icon://edit" press=".onEditEntry" />
-											<Button icon="sap-icon://delete" press=".onDeleteEntry" />
-										</HBox>
-									</HBox>
+                    <f:content>
+                        <List
+                            id="entryList"
+                            items="{
+                                path: 'odataModel>/Entries',
+                                parameters: { $$groupId: '$auto', $$updateGroupId: '$auto' },
+                                sorter: { path: 'date', descending: false },
+                                groupHeaderFactory: '.getGroupHeader'
+                            }"
+                            headerText="{i18n>listHeader}"
+                            growing="true"
+                            growingScrollToLoad="true">
+                            <CustomListItem>
+                                <VBox class="entryBox">
+                                    <HBox alignItems="Center" justifyContent="SpaceBetween">
+                                        <Text text="{i18n>lblProject}: {odataModel>project}" class="entryProjectTitle" />
+                                        <HBox justifyContent="End" alignItems="Center">
+                                            <Button icon="sap-icon://edit" press=".onEditEntry" tooltip="{i18n>tipEdit}" />
+                                            <Button icon="sap-icon://delete" press=".onDeleteEntry" tooltip="{i18n>tipDelete}" />
+                                        </HBox>
+                                    </HBox>
+                                    <Text text="{odataModel>shortText}" class="entryDescription" wrapping="true" />
+                                    <HBox justifyContent="SpaceBetween" alignItems="Center">
+                                        <Text text="{odataModel>duration}" class="entryDuration sapUiTinyMarginBegin" />
+                                        <Text text="{odataModel>accountingText}" class="entryAccounting" />
+                                        <Text text="{odataModel>date}" class="entryDate" />
+                                    </HBox>
+                                </VBox>
+                            </CustomListItem>
+                        </List>
+                    </f:content>
+                </f:DynamicPage>
+            </content>
 
-									<!-- Zeile 2: Beschreibung -->
-									<Text text="{shortText}" class="entryDescription" wrapping="true" />
-
-									<!-- Zeile 3: Dauer, Abrechnungsart, Datum -->
-									<HBox justifyContent="SpaceBetween" alignItems="Center">
-										<Text text="{duration}" class="entryDuration sapUiTinyMarginBegin" />
-										<Text text="{accounting}" class="entryAccounting" />
-										<Text text="{date}" class="entryDate" />
-									</HBox>
-								</VBox>
-							</CustomListItem>
-						</List>
-					</f:content>
-				</f:DynamicPage>
-			</content>
-
-			<footer>
-				<OverflowToolbar>
-					<ToolbarSpacer />
-					<Button text="Zurücksetzen" icon="sap-icon://undo" type="Reject" press=".onCancel" />
-					<Button text="Speichern" icon="sap-icon://save" type="Emphasized" press=".onSave" />
-				</OverflowToolbar>
-			</footer>
-		</Page>
-	</App>
+            <footer>
+                <OverflowToolbar>
+                    <ToolbarSpacer />
+                    <Button text="{i18n>btnReset}" icon="sap-icon://undo" type="Reject" press=".onCancel" />
+                    <Button text="{i18n>btnSave}" icon="sap-icon://save" type="Emphasized" press=".onSave" />
+                </OverflowToolbar>
+            </footer>
+        </Page>
+    </App>
 </mvc:View>
