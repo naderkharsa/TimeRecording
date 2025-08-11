@@ -9,11 +9,11 @@
         "_version": "1.1.0",
         "technology": "UI5",
         "deviceTypes": {
-                "desktop": true,
-                "tablet": true,
-                "phone": true
+            "desktop": true,
+            "tablet": true,
+            "phone": true
         }
-},
+    },
     "sap.ui5": {
         "dependencies": {
             "minUI5Version": "1.121.0",
@@ -36,9 +36,17 @@
                     "async": true
                 }
             },
-            "": {
-                "type": "sap.ui.model.json.JSONModel",
-                "uri" : "model/entries.json"
+            "odataModel": {
+                "type": "sap.ui.model.odata.v4.ODataModel",
+                "settings": {
+                    "synchronizationMode": "None",
+                    "operationMode": "Server",
+                    "serviceUrl": "/odata/v4/booking/",
+                    "autoExpandSelect": true,
+                    "earlyRequests": true,
+                    "groupId": "$auto",
+                    "updateGroupId": "$auto"
+                }
             }
         },
         "resources": {

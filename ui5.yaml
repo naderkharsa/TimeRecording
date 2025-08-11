@@ -24,3 +24,8 @@ server:
       configuration:
         component: sap.ui.timebookings
         ui5Theme: sap_horizon
+    - name: ui5-middleware-simpleproxy
+      afterMiddleware: compression
+      mountPath: /odata/v4/booking
+      configuration:
+        baseUri: http://localhost:4004/odata/v4/booking

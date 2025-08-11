@@ -1,25 +1,23 @@
 <core:FragmentDefinition xmlns="sap.m"
-  xmlns:core="sap.ui.core">
-  <Dialog id="StopDialog" title="Arbeitsbeschreibung">
-    <VBox class="sapUiSmallMargin">
-      <Text text="Beschreibe deine Arbeit" />
-      <Input id="shortTextInput" value="{/entry/shortText}" liveChange=".onDialogInputChange" placeholder="Short Text" class="sapUiTinyMarginBottom" />
+    xmlns:core="sap.ui.core">
+    <Dialog id="StopDialog" title="{i18n>dlgStopTitle}">
+        <VBox class="sapUiSmallMargin">
+            <Text text="{i18n>txtWorkDesc}" />
+            <Input id="shortTextInput" value="{/entry/shortText}" liveChange=".onDialogInputChange" placeholder="{i18n>phShortText}" class="sapUiTinyMarginBottom" />
 
-      <Label text="Accounting Indicator:" />
-      <Select id="accountingSelect" selectedKey="{/entry/accountingId}" forceSelection="false" change=".onDialogInputChange">
-        <core:Item key="01" text="01 - Vor Ort" />
-        <core:Item key="02" text="02 - Remote" />
-      </Select>
+            <Label text="{i18n>lblAccounting}" />
+            <Select id="accountingSelect" selectedKey="{/entry/accountingId}" forceSelection="false" change=".onDialogInputChange">
+                <core:Item key="01" text="{i18n>accounting01}" />
+                <core:Item key="02" text="{i18n>accounting02}" />
+            </Select>
+        </VBox>
 
+        <beginButton>
+            <Button id="okBtn" text="{i18n>btnOK}" press=".onStopConfirm" enabled="false" />
+        </beginButton>
 
-    </VBox>
-
-    <beginButton>
-      <Button id="okBtn" text="OK" press=".onStopConfirm" enabled="false" />
-    </beginButton>
-
-    <endButton>
-      <Button text="Abbrechen" press=".onStopCancel" />
-    </endButton>
-  </Dialog>
+        <endButton>
+            <Button text="{i18n>btnCancel}" press=".onStopCancel" />
+        </endButton>
+    </Dialog>
 </core:FragmentDefinition>
